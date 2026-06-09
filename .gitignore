@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+xcuserdata/
+*.xcuserdatad/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Release artifacts (uploaded to GitHub Releases, not committed)
+Release/
+*.zip
+*.dmg
+
+# Source screen recordings (keep the exported demo.gif, not the heavy .mov)
+*.mov
+
+# Local RE / capture scratch (don't ship reverse-engineering captures)
+*.pcapng
+*.bin

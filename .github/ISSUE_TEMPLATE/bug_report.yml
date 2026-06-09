@@ -1,0 +1,48 @@
+name: 🐞 Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Prismatic version
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 15.5 (Apple Silicon)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and the steps to reproduce it.
+      placeholder: |
+        1. Open Prismatic
+        2. Set the left speaker to red
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: sanity
+    attributes:
+      label: Sanity checks
+      options:
+        - label: The Arena 7 is connected over **USB**.
+          required: false
+        - label: SteelSeries GG is **not running** at the same time.
+          required: false

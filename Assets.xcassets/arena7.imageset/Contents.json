@@ -1,0 +1,21 @@
+{
+  "images" : [
+    {
+      "filename" : "arena_7_pdp_img_buy_2.png__1920x1080_crop-fit_optimize_subsampling-2-347.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

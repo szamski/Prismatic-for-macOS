@@ -1,0 +1,91 @@
+name: 🎛️ New device support
+description: Request RGB lighting support for another SteelSeries device
+title: "[Device] <model name>"
+labels: ["new-device"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping Prismatic grow! 🙏
+
+        Prismatic can likely drive **any SteelSeries device that SteelSeries GG lights up** —
+        it just needs the device's USB lighting protocol reverse-engineered. The single most
+        useful thing you can provide is a **USBPcap capture** of GG changing the lights to
+        known colors (that's exactly how the Arena 7 was figured out).
+
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      placeholder: e.g. SteelSeries Arena 9
+    validations:
+      required: true
+
+  - type: input
+    id: usb-ids
+    attributes:
+      label: USB VID:PID
+      description: >
+        macOS: `system_profiler SPUSBDataType | grep -iA8 steelseries`, or run
+        `swift tools/hid-probe.swift` from the repo. Windows: Device Manager → device →
+        Details → Hardware Ids.
+      placeholder: e.g. 0x1038:0x1A00
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: Your macOS version
+      placeholder: e.g. macOS 15.5 (Apple Silicon)
+    validations:
+      required: true
+
+  - type: textarea
+    id: zones
+    attributes:
+      label: RGB zones
+      description: How many independently-addressable lighting zones, and where are they?
+      placeholder: |
+        e.g. 4 zones — base ring + rear triangle on each of the left and right speaker.
+    validations:
+      required: true
+
+  - type: textarea
+    id: capture
+    attributes:
+      label: USBPcap capture (the important one!)
+      description: |
+        On a **Windows** PC with the device connected over USB:
+
+        1. Install **Wireshark** and tick **USBPcap** in the installer.
+        2. Install **SteelSeries GG** and confirm it changes the device's lighting.
+        3. Start capturing on the **USBPcap** interface that shows VID `1038`.
+        4. In GG, set the lighting to **static, full brightness** and do, with ~2s gaps:
+           **all RED (255,0,0) → all GREEN (0,255,0) → all BLUE (0,0,255) → each zone a
+           different color → OFF**.
+        5. Stop, **Save As** `capture.pcapng`, **zip it**, and drag the zip in below.
+
+        > No Windows machine? Tell me — we can work from the `hid-probe` output, it's just slower.
+      placeholder: Drag & drop your zipped .pcapng here, or paste a link.
+    validations:
+      required: false
+
+  - type: textarea
+    id: hid-probe
+    attributes:
+      label: HID report descriptor (optional, helpful)
+      description: Output of `swift tools/hid-probe.swift` run with the device connected.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmations
+      options:
+        - label: SteelSeries GG can control this device's lighting on my machine.
+          required: true
+        - label: I'm willing to test a build / capture once a maintainer follows up.
+          required: false
