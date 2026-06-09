@@ -6,6 +6,7 @@
 
 ### Control your **SteelSeries Arena 7** RGB from the macOS menu bar — no SteelSeries GG required.
 
+[![Build](https://img.shields.io/github/actions/workflow/status/szamski/Prismatic-for-macOS/ci.yml?style=flat-square&logo=github&label=build)](https://github.com/szamski/Prismatic-for-macOS/actions/workflows/ci.yml)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-000000?style=flat-square&logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Built with SwiftUI](https://img.shields.io/badge/built%20with-SwiftUI-0066CC?style=flat-square&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![License: MIT](https://img.shields.io/github/license/szamski/Prismatic-for-macOS?style=flat-square&color=brightgreen)](LICENSE)

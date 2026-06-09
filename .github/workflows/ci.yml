@@ -1,0 +1,27 @@
+name: Build
+
+# Fast compile check on every push / PR — no signing, no secrets needed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use latest Xcode 16
+        run: |
+          XC=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XC" ] && sudo xcode-select -s "$XC/Contents/Developer" || true
+          xcodebuild -version
+
+      - name: Build (Debug, unsigned)
+        run: |
+          xcodebuild -project prisma-led-macos.xcodeproj -scheme Prismatic \
+            -configuration Debug -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO build

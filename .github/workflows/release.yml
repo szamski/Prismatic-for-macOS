@@ -1,0 +1,109 @@
+name: Release
+
+# Builds, signs (Developer ID), notarizes, staples, and publishes Prismatic whenever you
+# push a version tag like `v1.2.3`. Produces a notarized .zip and .dmg, and (optionally)
+# bumps the Homebrew cask in szamski/homebrew-tap.
+#
+# Required repository secrets — Settings → Secrets and variables → Actions:
+#   MACOS_CERTIFICATE      base64 of your "Developer ID Application" .p12
+#                          (Keychain Access → export .p12, then: base64 -i cert.p12 | pbcopy)
+#   MACOS_CERTIFICATE_PWD  the password you set when exporting the .p12
+#   KEYCHAIN_PWD           any throwaway string (temporary CI keychain password)
+#   APPLE_ID               your Apple ID email
+#   APPLE_APP_PASSWORD     an app-specific password (appleid.apple.com)
+#   APPLE_TEAM_ID          CKWYP7CT7C
+# Optional — to auto-update the Homebrew tap on each release:
+#   TAP_TOKEN              a PAT with `contents:write` on szamski/homebrew-tap
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use latest Xcode 16
+        run: |
+          XC=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XC" ] && sudo xcode-select -s "$XC/Contents/Developer" || true
+          xcodebuild -version
+
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PWD }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security list-keychains -d user -s "$KC" login.keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KC"
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Archive & export (Developer ID + hardened runtime)
+        run: |
+          xcodebuild -project prisma-led-macos.xcodeproj -scheme Prismatic -configuration Release \
+            -archivePath "$RUNNER_TEMP/Prismatic.xcarchive" archive
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Prismatic.xcarchive" \
+            -exportOptionsPlist scripts/ExportOptions.plist -exportPath "$RUNNER_TEMP/export"
+
+      - name: Notarize, staple & package (.zip + .dmg)
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP="$RUNNER_TEMP/export/Prismatic.app"
+
+          # --- ZIP: notarize the app, staple it, repackage ---
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple "$APP"
+          ditto -c -k --keepParent "$APP" "Prismatic.zip"
+
+          # --- DMG: built signed with the imported Developer ID, then notarized + stapled ---
+          npm install -g create-dmg
+          create-dmg "$APP" "$RUNNER_TEMP" || true
+          mv "$RUNNER_TEMP/"*.dmg Prismatic.dmg
+          xcrun notarytool submit Prismatic.dmg \
+            --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple Prismatic.dmg
+
+          shasum -a 256 Prismatic.zip Prismatic.dmg
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Prismatic ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            Prismatic.zip Prismatic.dmg
+
+      - name: Bump Homebrew cask (szamski/homebrew-tap)
+        if: ${{ env.TAP_TOKEN != '' }}
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          SHA=$(shasum -a 256 Prismatic.zip | awk '{print $1}')
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/szamski/homebrew-tap.git" "$RUNNER_TEMP/tap"
+          cd "$RUNNER_TEMP/tap"
+          sed -i '' -E "s/version \".*\"/version \"${VER}\"/" Casks/prismatic.rb
+          sed -i '' -E "s/sha256 \".*\"/sha256 \"${SHA}\"/" Casks/prismatic.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "prismatic ${VER}"
+          git push
