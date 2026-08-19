@@ -69,18 +69,19 @@ final class ArenaUSBController {
     /// Finds and opens the Arena 7 vendor interface. Throws on failure.
     func connect() throws {
         if device != nil { return }
-        IOHIDManagerSetDeviceMatching(manager, nil)
-        _ = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        // Match only the Arena 7 vendor interface so the HID manager never touches
+        // keyboards or other input devices. Enumeration doesn't require opening the
+        // manager; only the per-device IOHIDDeviceOpen below needs Input Monitoring.
+        IOHIDManagerSetDeviceMatching(manager, [
+            kIOHIDVendorIDKey: Self.vendorID,
+            kIOHIDProductIDKey: Self.productID,
+            kIOHIDPrimaryUsagePageKey: Self.usagePage,
+        ] as CFDictionary)
 
-        guard let devices = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
+        guard let devices = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice>,
+              let match = devices.first else {
             throw ArenaError.notFound
         }
-        let match = devices.first { device in
-            intProperty(device, kIOHIDVendorIDKey) == Self.vendorID
-                && intProperty(device, kIOHIDProductIDKey) == Self.productID
-                && intProperty(device, kIOHIDPrimaryUsagePageKey) == Self.usagePage
-        }
-        guard let match else { throw ArenaError.notFound }
 
         let result = IOHIDDeviceOpen(match, IOOptionBits(kIOHIDOptionsTypeNone))
         guard result == kIOReturnSuccess else { throw ArenaError.openFailed(result) }
@@ -128,9 +129,5 @@ final class ArenaUSBController {
             IOHIDDeviceSetReport(device, kIOHIDReportTypeOutput, Self.reportID, buffer.baseAddress!, report.count)
         }
         guard result == kIOReturnSuccess else { throw ArenaError.writeFailed(result) }
-    }
-
-    private func intProperty(_ device: IOHIDDevice, _ key: String) -> Int? {
-        (IOHIDDeviceGetProperty(device, key as CFString) as? NSNumber)?.intValue
     }
 }
