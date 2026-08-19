@@ -70,8 +70,8 @@ final class ArenaUSBController {
     func connect() throws {
         if device != nil { return }
         // Match only the Arena 7 vendor interface so the HID manager never touches
-        // keyboards or other input devices. Enumeration doesn't require opening the
-        // manager; only the per-device IOHIDDeviceOpen below needs Input Monitoring.
+        // keyboards or other input devices. Opening the manager isn't needed for
+        // enumeration; IOHIDManagerCopyDevices works with just the matching set.
         IOHIDManagerSetDeviceMatching(manager, [
             kIOHIDVendorIDKey: Self.vendorID,
             kIOHIDProductIDKey: Self.productID,
